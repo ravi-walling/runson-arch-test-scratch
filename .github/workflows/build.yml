@@ -1,0 +1,52 @@
+# THROWAWAY repo/workflow, deleted after use. Phase 6a RunsOn/Railway
+# architecture validation for walling-react
+# (intent://local/task/416e3667-dd97-4d56-a10b-2cc55a1e835a). This repo
+# exists only because GHCR defaults a new package's visibility to public
+# when its source repo is public, which is the least invasive way to let
+# Railway pull the test image without changing any credential/visibility
+# setting on the real walling-react repo. Builds the exact same
+# apps/ops-mastra-studio/Dockerfile content (copied, unmodified) on RunsOn's
+# x86_64 family=m7i to prove that architecture boots on Railway.
+name: Build on RunsOn x86_64 (family=m7i)
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  IMAGE_REPOSITORY: ghcr.io/${{ github.repository_owner }}/runson-arch-test-scratch
+  IMAGE_TAG: ${{ github.sha }}
+
+jobs:
+  build-and-push:
+    name: Build image on RunsOn x86_64 (family=m7i)
+    runs-on: runs-on=${{ github.run_id }}/family=m7i/cpu=2/image=ubuntu24-full-x64
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - name: Build and push throwaway image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          push: true
+          tags: ${{ env.IMAGE_REPOSITORY }}:${{ env.IMAGE_TAG }}
+
+      - name: Record image reference
+        run: echo "Built and pushed ${{ env.IMAGE_REPOSITORY }}:${{ env.IMAGE_TAG }}"
